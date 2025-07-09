@@ -25,23 +25,31 @@ export function updateCartCount() {
 // Render the cart modal with remove buttons
 export function renderCartModal() {
   const cart = JSON.parse(localStorage.getItem("cart")) || [];
+ const total = cart.reduce((sum, item) => {
+  const cleanPrice = Number(item.price.replace(/[^0-9.]/g, ''));
+  return sum + cleanPrice * item.quantity;
+}, 0);
+
 
   return `
     <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
       <div class="bg-white p-6 rounded shadow-lg w-96 max-h-[80vh] overflow-y-auto">
         <h2 class="text-xl font-bold mb-4">Your Cart</h2>
-        ${cart.length === 0 ? `<p class="text-gray-600">Your cart is empty.</p>` : `
         <ul class="space-y-4">
-          ${cart.map((item, index) => `
+          ${cart.map(item => `
             <li class="border-b pb-2 flex justify-between items-center">
               <div>
                 <div class="font-semibold">${item.name}</div>
-                <div class="text-sm text-gray-500">Price: ${item.price}</div>
+                <div class="text-sm text-gray-500">Price: $${item.price}</div>
                 <div class="text-sm text-gray-500">Quantity: ${item.quantity}</div>
               </div>
-              <button class="remove-item text-red-600 text-sm" data-index="${index}">Remove</button>
-            </li>`).join('')}
-        </ul>`}
+              <button class="remove-item text-red-600" data-id="${item.id}">Remove</button>
+            </li>
+          `).join("")}
+        </ul>
+
+        <div class="mt-4 font-bold text-right text-lg">Total: $${total.toFixed(2)}</div>
+
         <div class="mt-4 flex justify-end gap-2">
           <button id="clear-cart" class="bg-red-500 text-white px-4 py-2 rounded">Clear All</button>
           <button id="close-cart" class="bg-blue-500 text-white px-4 py-2 rounded">Close</button>
@@ -50,6 +58,7 @@ export function renderCartModal() {
     </div>
   `;
 }
+
 
 // Setup event listeners for cart interactions
 export function setupCartEvents() {
