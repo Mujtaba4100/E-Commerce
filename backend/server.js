@@ -15,10 +15,10 @@ app.use('/api', cartRoutes);
 app.use('/products', productRoutes);
 
 // (Optional) JSON file route if still needed
-app.get('/products', async (req, res) => {
-  const data = await readFile('./products.json', 'utf-8');
-  res.json(JSON.parse(data));
-});
+// app.get('/products', async (req, res) => {
+//   const data = await readFile('./products.json', 'utf-8');
+//   res.json(JSON.parse(data));
+// });
 
 app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
