@@ -8,9 +8,9 @@ export function renderLoginPage() {
       <h2 class="text-2xl font-bold mb-4 text-center">🔐 Login to Your Account</h2>
       <form id="login-form" class="space-y-4">
         <input
-          type="text"
-          name="username"
-          placeholder="Username"
+          type="email"
+          name="email"
+          placeholder="Email"
           required
           class="w-full border px-3 py-2 rounded"
         />
@@ -34,16 +34,17 @@ export function renderLoginPage() {
     </div>
   `;
 
+  // Handle form submission
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const payload = {
-      username: formData.get("username"),
+      email: formData.get("email"),
       password: formData.get("password")
     };
 
     try {
-      const res = await fetch("http://localhost:3000/api/users/login", {
+      const res = await fetch("http://localhost:3000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -51,19 +52,22 @@ export function renderLoginPage() {
 
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.message || "Login failed");
+      if (!res.ok) throw new Error(data.error || "Login failed");
 
       localStorage.setItem("token", data.token);
+      localStorage.setItem("userId", data.userId);
+
       alert("✅ Login successful!");
-      location.reload();
+      location.reload(); // Reloads to home or main page
 
     } catch (err) {
       alert("❌ " + err.message);
     }
   });
 
+  // Go to register page
   document.getElementById("register-link").addEventListener("click", (e) => {
     e.preventDefault();
     import("./register.js").then(m => m.renderRegisterPage());
   });
-} 
+}

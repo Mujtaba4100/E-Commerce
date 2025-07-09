@@ -1,8 +1,14 @@
-// src/pages/cart.js
-import { mountApp } from "../main.js"; // You must export mountApp in main.js
+// ✅ UPDATED FILE: src/pages/cart.js
+
+import { mountApp } from "../main.js";
 
 export async function renderCartPage() {
-  const res = await fetch("http://localhost:3000/api/cart");
+  const token = localStorage.getItem("token");
+  const res = await fetch("http://localhost:3000/api/cart", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
   const cart = await res.json();
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -34,11 +40,13 @@ export async function renderCartPage() {
     </div>
   `;
 
-  // Event handlers
   document.querySelectorAll(".remove-cart-item").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:3000/api/cart/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       renderCartPage();
     });
   });
@@ -46,11 +54,16 @@ export async function renderCartPage() {
   document.querySelectorAll(".increase-qty").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      const updated = await (await fetch("http://localhost:3000/api/cart")).json();
+      const updated = await (await fetch("http://localhost:3000/api/cart", {
+        headers: { Authorization: `Bearer ${token}` },
+      })).json();
       const item = updated.find(i => i._id === id);
       await fetch(`http://localhost:3000/api/cart/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ quantity: item.quantity + 1 })
       });
       renderCartPage();
@@ -60,14 +73,22 @@ export async function renderCartPage() {
   document.querySelectorAll(".decrease-qty").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      const updated = await (await fetch("http://localhost:3000/api/cart")).json();
+      const updated = await (await fetch("http://localhost:3000/api/cart", {
+        headers: { Authorization: `Bearer ${token}` },
+      })).json();
       const item = updated.find(i => i._id === id);
       if (item.quantity === 1) {
-        await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
+        await fetch(`http://localhost:3000/api/cart/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
         await fetch(`http://localhost:3000/api/cart/${id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ quantity: item.quantity - 1 })
         });
       }
@@ -76,11 +97,13 @@ export async function renderCartPage() {
   });
 
   document.getElementById("clear-cart").addEventListener("click", async () => {
-    await fetch("http://localhost:3000/api/cart", { method: "DELETE" });
+    await fetch("http://localhost:3000/api/cart", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     renderCartPage();
   });
 
-  // 🟢 Fix: Call mountApp directly
   document.getElementById("go-home").addEventListener("click", () => {
     mountApp();
   });

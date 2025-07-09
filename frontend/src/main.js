@@ -4,30 +4,49 @@ import { renderCartPage } from "./pages/cart.js";
 import "./styles.css";
 
 async function addToCart(product) {
-  const clonedProduct = { ...product };
-  const userId = localStorage.getItem("userId");
-
+  console.log("🟢 Product received:", product); // ✅ Debug
   const payload = {
-    userId,
-    productId: clonedProduct.id || clonedProduct._id,
-    name: clonedProduct.name,
-    price: Number(clonedProduct.price),
-    image: clonedProduct.image,
-  };
+  productId: product._id || product.id,
+  name: product.name || product.title,   // fallback to title
+  price: Number(product.price || product.cost), // fallback to cost
+  image: product.image || "",
+};
 
-  await fetch("http://localhost:3000/api/cart", {
+  console.log("🟡 Payload being sent:", payload); // ✅ Debug
+
+  if (!payload.name || !payload.price) {
+    alert("❌ Missing product name or price. Please check console.");
+    return;
+  }
+
+  const res = await fetch("http://localhost:3000/api/cart", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
     },
     body: JSON.stringify(payload),
   });
 
-  showToast(`${clonedProduct.name} added to cart`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("❌ Add to cart error:", errorText);
+    alert("❌ Add to cart failed.");
+    return;
+  }
+
+  showToast(`${product.name} added to cart`);
 }
 
+
+
 export async function renderCartModal() {
-  const res = await fetch("http://localhost:3000/api/cart");
+  const token = localStorage.getItem("token");
+
+  const res = await fetch("http://localhost:3000/api/cart", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
   const cart = await res.json();
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -40,8 +59,8 @@ export async function renderCartModal() {
             <li class="border-b pb-2">
               <div class="flex justify-between items-center">
                 <div>
-                  <div class="font-semibold">${item.name}</div>
-                  <div class="text-sm text-gray-600">Price: $${item.price}</div>
+                  <div class="font-semibold">${item.name || "Unnamed"}</div>
+                  <div class="text-sm text-gray-600">Price: $${item.price || 0}</div>
                   <div class="text-sm text-gray-600 flex items-center gap-2">
                     <span>Qty:</span>
                     <button class="decrease-qty bg-gray-200 px-2" data-id="${item._id}">−</button>
@@ -68,13 +87,15 @@ export async function renderCartModal() {
   wrapper.innerHTML = modalHTML;
   document.body.appendChild(wrapper.firstElementChild);
 
-  // Button actions
   document.getElementById("close-cart").addEventListener("click", () => {
     document.getElementById("cart-modal")?.remove();
   });
 
   document.getElementById("clear-cart").addEventListener("click", async () => {
-    await fetch("http://localhost:3000/api/cart", { method: "DELETE" });
+    await fetch("http://localhost:3000/api/cart", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     document.getElementById("cart-modal")?.remove();
     showToast("Cart cleared");
   });
@@ -82,7 +103,10 @@ export async function renderCartModal() {
   document.querySelectorAll(".remove-cart-item").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
+      await fetch(`http://localhost:3000/api/cart/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       document.getElementById("cart-modal")?.remove();
       renderCartModal();
     });
@@ -91,16 +115,15 @@ export async function renderCartModal() {
   document.querySelectorAll(".increase-qty").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      const res = await fetch("http://localhost:3000/api/cart");
-      const updatedCart = await res.json();
-      const item = updatedCart.find(i => i._id === id);
-
+      const item = cart.find(i => i._id === id);
       await fetch(`http://localhost:3000/api/cart/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: item.quantity + 1 })
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ quantity: item.quantity + 1 }),
       });
-
       document.getElementById("cart-modal")?.remove();
       renderCartModal();
     });
@@ -109,20 +132,22 @@ export async function renderCartModal() {
   document.querySelectorAll(".decrease-qty").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = btn.getAttribute("data-id");
-      const res = await fetch("http://localhost:3000/api/cart");
-      const updatedCart = await res.json();
-      const item = updatedCart.find(i => i._id === id);
-
+      const item = cart.find(i => i._id === id);
       if (item.quantity === 1) {
-        await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
+        await fetch(`http://localhost:3000/api/cart/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
         await fetch(`http://localhost:3000/api/cart/${id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quantity: item.quantity - 1 })
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ quantity: item.quantity - 1 }),
         });
       }
-
       document.getElementById("cart-modal")?.remove();
       renderCartModal();
     });
@@ -133,7 +158,6 @@ async function getProducts() {
   try {
     const res = await fetch("http://localhost:3000/products");
     const data = await res.json();
-    console.log("✅ Products fetched:", data);
     return data;
   } catch (error) {
     console.error("❌ Error fetching products:", error);
@@ -142,12 +166,13 @@ async function getProducts() {
 }
 
 function createCard(product) {
+  console.log("🧪 createCard product:", product); // ✅ Debug
   return `
     <div class="product-card bg-white rounded-lg shadow-md p-4 w-full max-w-xs" data-id="${product._id || product.id}">
       <img src="${product.image}" alt="${product.name}" class="w-full h-40 object-cover rounded" />
       <h3 class="mt-3 text-lg font-semibold text-gray-800">${product.name}</h3>
-      <p class="text-sm text-gray-600 mt-1">${product.description}</p>
-      <strong class="block text-blue-600 font-bold mt-2">${product.price}</strong>
+      <p class="text-sm text-gray-600 mt-1">${product.description || "No description."}</p>
+      <strong class="block text-blue-600 font-bold mt-2">$${product.price}</strong>
       <button data-product='${JSON.stringify(product)}' class="add-to-cart bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mt-3">
         Add to Cart
       </button>
@@ -157,10 +182,7 @@ function createCard(product) {
 
 async function mountApp() {
   const app = document.getElementById("app");
-  if (!app) {
-    console.error("❌ #app div not found!");
-    return;
-  }
+  if (!app) return;
 
   app.innerHTML = `
     ${renderHeader()}
@@ -169,8 +191,7 @@ async function mountApp() {
   `;
 
   const products = await getProducts();
-  const productList = document.getElementById("product-list");
-  productList.innerHTML = products.map(createCard).join("");
+  document.getElementById("product-list").innerHTML = products.map(createCard).join("");
 
   document.querySelectorAll(".add-to-cart").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -179,56 +200,35 @@ async function mountApp() {
     });
   });
 
-  const homeLink = document.getElementById("home-link");
-  if (homeLink) {
-    homeLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      mountApp();
-    });
-  }
+  document.getElementById("home-link")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    mountApp();
+  });
 
-  const logo = document.getElementById("logo");
-  if (logo) {
-    logo.addEventListener("click", () => {
-      mountApp();
-    });
-  }
+  document.getElementById("logo")?.addEventListener("click", () => mountApp());
 
-  const cartLink = document.getElementById("cart-link");
-  if (cartLink) {
-    cartLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      await renderCartPage(); // if you want full page, or use renderCartModal()
-    });
-  }
+  document.getElementById("cart-link")?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await renderCartPage();
+  });
 
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", () => {
-      localStorage.removeItem("userId");
-      location.reload();
-    });
-  }
+  document.getElementById("logout-btn")?.addEventListener("click", () => {
+    localStorage.removeItem("userId");
+    location.reload();
+  });
 
-  const loginLink = document.getElementById("login-link");
-if (loginLink) {
-  loginLink.addEventListener("click", (e) => {
+  document.getElementById("login-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     import("./pages/login.js").then(module => module.renderLoginPage());
   });
-}
 
-const logoutLink = document.getElementById("logout-link");
-if (logoutLink) {
-  logoutLink.addEventListener("click", (e) => {
+  document.getElementById("logout-link")?.addEventListener("click", (e) => {
     e.preventDefault();
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     alert("Logged out");
     mountApp();
   });
-}
-
 }
 
 function showToast(message) {
