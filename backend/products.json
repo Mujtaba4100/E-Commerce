@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "Sneakers",
+    "description": "Running shoes",
+    "price": "$49.99",
+    "image": "https://picsum.photos/300/200?random=1"
+  },
+  {
+    "id": 2,
+    "name": "Backpack",
+    "description": "Stylish backpack",
+    "price": "$39.99",
+    "image": "https://picsum.photos/300/200?random=2"
+  }
+]
