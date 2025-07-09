@@ -1,13 +1,14 @@
 import { renderHeader } from "./components/header.js";
 import { renderHome } from "./pages/home.js";
 import { renderCartPage } from "./pages/cart.js";
-
 import "./styles.css";
 
 async function addToCart(product) {
   const clonedProduct = { ...product };
+  const userId = localStorage.getItem("userId");
 
   const payload = {
+    userId,
     productId: clonedProduct.id || clonedProduct._id,
     name: clonedProduct.name,
     price: Number(clonedProduct.price),
@@ -23,13 +24,11 @@ async function addToCart(product) {
   });
 
   showToast(`${clonedProduct.name} added to cart`);
-
 }
 
 export async function renderCartModal() {
   const res = await fetch("http://localhost:3000/api/cart");
   const cart = await res.json();
-
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const modalHTML = `
@@ -69,6 +68,7 @@ export async function renderCartModal() {
   wrapper.innerHTML = modalHTML;
   document.body.appendChild(wrapper.firstElementChild);
 
+  // Button actions
   document.getElementById("close-cart").addEventListener("click", () => {
     document.getElementById("cart-modal")?.remove();
   });
@@ -88,44 +88,45 @@ export async function renderCartModal() {
     });
   });
 
- document.querySelectorAll(".increase-qty").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const id = btn.getAttribute("data-id");
-    const res = await fetch("http://localhost:3000/api/cart");
-    const updatedCart = await res.json();
-    const item = updatedCart.find(i => i._id === id);
+  document.querySelectorAll(".increase-qty").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-id");
+      const res = await fetch("http://localhost:3000/api/cart");
+      const updatedCart = await res.json();
+      const item = updatedCart.find(i => i._id === id);
 
-    await fetch(`http://localhost:3000/api/cart/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quantity: item.quantity + 1 })
-    });
-
-    renderCartPage();
-  });
-});
-
-
-document.querySelectorAll(".decrease-qty").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const id = btn.getAttribute("data-id");
-    const res = await fetch("http://localhost:3000/api/cart");
-    const updatedCart = await res.json();
-    const item = updatedCart.find(i => i._id === id);
-
-    if (item.quantity === 1) {
-      await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
-    } else {
       await fetch(`http://localhost:3000/api/cart/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quantity: item.quantity - 1 })
+        body: JSON.stringify({ quantity: item.quantity + 1 })
       });
-    }
-  
-    renderCartPage();
+
+      document.getElementById("cart-modal")?.remove();
+      renderCartModal();
+    });
   });
-});
+
+  document.querySelectorAll(".decrease-qty").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-id");
+      const res = await fetch("http://localhost:3000/api/cart");
+      const updatedCart = await res.json();
+      const item = updatedCart.find(i => i._id === id);
+
+      if (item.quantity === 1) {
+        await fetch(`http://localhost:3000/api/cart/${id}`, { method: "DELETE" });
+      } else {
+        await fetch(`http://localhost:3000/api/cart/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity: item.quantity - 1 })
+        });
+      }
+
+      document.getElementById("cart-modal")?.remove();
+      renderCartModal();
+    });
+  });
 }
 
 async function getProducts() {
@@ -142,7 +143,7 @@ async function getProducts() {
 
 function createCard(product) {
   return `
-    <div class="product-card bg-white rounded-lg shadow-md p-4 w-full max-w-xs" data-id="${product._id || product.id}"">
+    <div class="product-card bg-white rounded-lg shadow-md p-4 w-full max-w-xs" data-id="${product._id || product.id}">
       <img src="${product.image}" alt="${product.name}" class="w-full h-40 object-cover rounded" />
       <h3 class="mt-3 text-lg font-semibold text-gray-800">${product.name}</h3>
       <p class="text-sm text-gray-600 mt-1">${product.description}</p>
@@ -166,21 +167,6 @@ async function mountApp() {
     ${renderHome()}
     <section id="product-list" class="flex flex-wrap gap-6 justify-center p-8 bg-gray-100"></section>
   `;
-  const homeLink = document.getElementById("home-link");
-if (homeLink) {
-  homeLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    mountApp(); // reload home
-  });
-}
-
-const logo = document.getElementById("logo");
-if (logo) {
-  logo.addEventListener("click", () => {
-    mountApp(); // clicking logo returns to home
-  });
-}
-
 
   const products = await getProducts();
   const productList = document.getElementById("product-list");
@@ -191,17 +177,59 @@ if (logo) {
       const product = JSON.parse(btn.getAttribute("data-product"));
       addToCart(product);
     });
-    const cartLink = document.getElementById("cart-link");
-if (cartLink) {
-  cartLink.addEventListener("click", async (e) => {
+  });
+
+  const homeLink = document.getElementById("home-link");
+  if (homeLink) {
+    homeLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      mountApp();
+    });
+  }
+
+  const logo = document.getElementById("logo");
+  if (logo) {
+    logo.addEventListener("click", () => {
+      mountApp();
+    });
+  }
+
+  const cartLink = document.getElementById("cart-link");
+  if (cartLink) {
+    cartLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await renderCartPage(); // if you want full page, or use renderCartModal()
+    });
+  }
+
+  const logoutBtn = document.getElementById("logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("userId");
+      location.reload();
+    });
+  }
+
+  const loginLink = document.getElementById("login-link");
+if (loginLink) {
+  loginLink.addEventListener("click", (e) => {
     e.preventDefault();
-    await renderCartPage(); // 👈 now using full page
+    import("./pages/login.js").then(module => module.renderLoginPage());
   });
 }
-  });}
 
- 
+const logoutLink = document.getElementById("logout-link");
+if (logoutLink) {
+  logoutLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    alert("Logged out");
+    mountApp();
+  });
+}
 
+}
 
 function showToast(message) {
   const toast = document.createElement("div");
@@ -212,5 +240,4 @@ function showToast(message) {
 }
 
 mountApp();
-export { mountApp }; // 👈 Must export for cart page to use
-
+export { mountApp };

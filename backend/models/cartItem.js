@@ -1,12 +1,15 @@
-// models/CartItem.js
+// backend/models/cartitem.js
+
 import mongoose from "mongoose";
 
 const cartItemSchema = new mongoose.Schema({
-  productId: String,  // this should NOT be MongoDB _id
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  productId: String,
   name: String,
   price: Number,
+  quantity: { type: Number, default: 1 },
   image: String,
-  quantity: Number,
 });
 
-export default mongoose.model("CartItem", cartItemSchema);
+const CartItem = mongoose.model("CartItem", cartItemSchema);
+export default CartItem;
