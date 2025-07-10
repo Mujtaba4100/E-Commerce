@@ -1,3 +1,4 @@
+
 // src/pages/login.js
 
 export function renderLoginPage() {
@@ -11,28 +12,24 @@ export function renderLoginPage() {
           name="email"
           placeholder="Email"
           required
-          class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full border px-3 py-2 rounded"
         />
         <input
           type="password"
           name="password"
-          placeholder="Password (min 6 characters)"
+          placeholder="Password"
           required
-          minlength="6"
-          class="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full border px-3 py-2 rounded"
         />
         <button
           type="submit"
-          class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700 transition-colors"
+          class="bg-blue-600 text-white px-4 py-2 rounded w-full"
         >
           Login
         </button>
       </form>
       <p class="text-sm text-center mt-4">
         Don't have an account? <a href="#" id="register-link" class="text-blue-600 hover:underline">Register</a>
-      </p>
-      <p class="text-sm text-center mt-2">
-        <a href="#" id="home-link" class="text-gray-600 hover:underline">← Back to Home</a>
       </p>
     </div>
   `;
@@ -55,24 +52,15 @@ export function renderLoginPage() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+      if (!res.ok) throw new Error(data.error || "Login failed");
 
-      // Store authentication data
       localStorage.setItem("token", data.token);
       localStorage.setItem("userId", data.userId);
 
-      // Show success message
-      showToast("✅ Login successful!");
-      
-      // Reload the app to show authenticated state
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+      alert("✅ Login successful!");
+      location.reload(); // Reloads to home or main page
 
     } catch (err) {
-      console.error("Login error:", err);
       alert("❌ " + err.message);
     }
   });
@@ -82,18 +70,4 @@ export function renderLoginPage() {
     e.preventDefault();
     import("./register.js").then(m => m.renderRegisterPage());
   });
-
-  // Go back to home
-  document.getElementById("home-link").addEventListener("click", (e) => {
-    e.preventDefault();
-    import("../main.js").then(m => m.mountApp());
-  });
-}
-
-function showToast(message) {
-  const toast = document.createElement("div");
-  toast.textContent = message;
-  toast.className = "fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50";
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
 }
